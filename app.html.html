@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Weather Dashboard</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Added transition for smooth background change */
+            transition: background 1s ease-in-out; 
+        }
+        /* Custom scrollbar for aesthetics */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb {
+            background: #4B5563; /* Gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1F2937; /* Gray-800 */
+        }
+    </style>
+</head>
+<!-- Removed fixed background class (bg-gray-900); it's now set dynamically by JavaScript -->
+<body class="min-h-screen p-4 sm:p-8 text-white">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Updated Header with Tiger Logo and new text: K45U -->
+        <h1 class="text-3xl font-extrabold mb-8 text-center text-blue-400 flex items-center justify-center gap-3">
+            <!-- Abstract Feline Head / Tiger Logo SVG -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="w-8 h-8 text-orange-500 fill-current drop-shadow-lg">
+                <!-- Simple abstract tiger face path -->
+                <path d="M472.9 84.1c-13.7-27.4-43.1-44.1-75.1-44.1H114.2c-32 0-61.4 16.7-75.1 44.1-13.7 27.4-13.8 60.1-.1 87.5l43.5 130.6c17.5 52.6 66.8 90.7 122.9 90.7h59.2c56.1 0 105.4-38.1 122.9-90.7l43.5-130.6c13.7-27.4 13.6-60.1-.1-87.5zM256 312c-27.6 0-50-22.4-50-50s22.4-50 50-50 50 22.4 50 50-22.4 50-50 50z"/>
+            </svg>
+            K45U
+        </h1>
+
+        <!-- Search Bar and Controls -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-8">
+            <div class="relative flex-grow">
+                <input type="text" id="city-input" placeholder="Enter City Name or Zip Code"
+                       class="w-full p-3 pl-10 bg-gray-800 border border-gray-700 rounded-xl focus:ring-blue-500 focus:border-blue-500 transition duration-300 shadow-lg"
+                       aria-label="City Search Input">
+                <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            <button id="search-button"
+                    class="p-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-semibold transition duration-300 shadow-lg sm:w-32">
+                Search
+            </button>
+            <button id="unit-toggle"
+                    class="p-3 bg-gray-600 hover:bg-gray-700 rounded-xl font-semibold transition duration-300 shadow-lg sm:w-24">
+                &deg;C / &deg;F
+            </button>
+        </div>
+
+        <!-- Message/Loading Area -->
+        <div id="message-area" class="text-center p-4 mb-8 bg-yellow-900 bg-opacity-30 border border-yellow-800 text-yellow-300 rounded-xl hidden">
+            <!-- Messages will appear here -->
+        </div>
+
+
+        <!-- Main Content Area -->
+        <div id="weather-display" class="hidden">
+
+            <!-- 1. Main Weather Card -->
+            <div class="bg-gray-800 p-6 rounded-3xl shadow-2xl mb-8 border border-gray-700">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 id="city-name" class="text-4xl sm:text-5xl font-bold text-gray-200"></h2>
+                        <p id="current-date" class="text-gray-400 text-sm"></p>
+                    </div>
+                    <div id="weather-icon-placeholder" class="text-6xl text-yellow-300">
+                        <!-- Icon will be inserted here -->
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-between items-end sm:items-center">
+                    <div class="flex items-center space-x-4">
+                        <div class="text-7xl sm:text-9xl font-light text-blue-300">
+                            <span id="current-temp"></span><span class="text-5xl" id="unit-symbol">&deg;C</span>
+                        </div>
+                        <div class="text-left">
+                            <p id="description" class="text-2xl sm:text-3xl font-medium capitalize text-gray-100"></p>
+                            <p class="text-gray-400 mt-1">H: <span id="temp-max"></span><span class="unit-sym">&deg;C</span> / L: <span id="temp-min"></span><span class="unit-sym">&deg;C</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Atmospheric Details Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-6 mb-8"> <!-- Added mb-8 for spacing -->
+
+                <!-- Detail Card Template -->
+                <div class="bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-700 space-y-2">
+                    <p class="text-sm font-medium text-gray-400 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        Wind Speed
+                    </p>
+                    <p id="wind-speed" class="text-3xl font-semibold text-gray-200"></p>
+                    <p id="wind-direction" class="text-sm text-gray-500"></p>
+                </div>
+
+                <div class="bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-700 space-y-2">
+                    <p class="text-sm font-medium text-gray-400 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Humidity
+                    </p>
+                    <p id="humidity" class="text-3xl font-semibold text-gray-200"></p>
+                    <p class="text-sm text-gray-500">Dampness in the air</p>
+                </div>
+
+                <div class="bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-700 space-y-2">
+                    <p class="text-sm font-medium text-gray-400 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7a4 4 0 00-4-4h-5.586a1 1 0 00-.707.293l-4.586 4.586a1 1 0 00-.293.707V15a4 4 0 004 4h7a4 4 0 004-4V7z"></path></svg>
+                        Pressure
+                    </p>
+                    <p id="pressure" class="text-3xl font-semibold text-gray-200"></p>
+                    <p class="text-sm text-gray-500">Current Sea Level</p>
+                </div>
+
+                <div class="bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-700 space-y-2">
+                    <p class="text-sm font-medium text-gray-400 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v14m-8-4h16"></path></svg>
+                        Sunrise
+                    </p>
+                    <p id="sunrise" class="text-3xl font-semibold text-gray-200"></p>
+                    <p class="text-sm text-gray-500">Dawn is here</p>
+                </div>
+
+                <div class="bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-700 space-y-2">
+                    <p class="text-sm font-medium text-gray-400 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                        Sunset
+                    </p>
+                    <p id="sunset" class="text-3xl font-semibold text-gray-200"></p>
+                    <p class="text-sm text-gray-500">Dusk is near</p>
+                </div>
+
+                <div class="bg-gray-800 p-5 rounded-xl shadow-xl border border-gray-700 space-y-2">
+                    <p class="text-sm font-medium text-gray-400 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        Visibility
+                    </p>
+                    <p id="visibility" class="text-3xl font-semibold text-gray-200"></p>
+                    <p class="text-sm text-gray-500">How far you can see</p>
+                </div>
+
+            </div>
+
+            <!-- 3. Five-Day Forecast Section -->
+            <h3 class="text-2xl font-semibold mt-10 mb-4 text-blue-300 border-b border-gray-700 pb-2">5-Day Forecast</h3>
+            <div id="forecast-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                <!-- Forecast cards will be injected here -->
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const API_KEY = "8f494538a638c1415ff1d8167343eb47";
+        // Updated BASE_URL to be specific for Current Weather
+        const CURRENT_WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather";
+        const FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"; // New URL for 5-day forecast
+        const DEFAULT_CITY = "London";
+
+        // --- DOM Elements ---
+        const cityInput = document.getElementById('city-input');
+        const searchButton = document.getElementById('search-button');
+        const unitToggle = document.getElementById('unit-toggle');
+        const messageArea = document.getElementById('message-area');
+        const weatherDisplay = document.getElementById('weather-display');
+
+        // Main Display
+        const cityNameEl = document.getElementById('city-name');
+        const currentDateEl = document.getElementById('current-date');
+        const weatherIconPlaceholder = document.getElementById('weather-icon-placeholder');
+        const currentTempEl = document.getElementById('current-temp');
+        const unitSymbolEls = document.querySelectorAll('#unit-symbol, .unit-sym');
+        const descriptionEl = document.getElementById('description');
+        const tempMaxEl = document.getElementById('temp-max');
+        const tempMinEl = document.getElementById('temp-min');
+
+        // Detail Cards
+        const windSpeedEl = document.getElementById('wind-speed');
+        const windDirectionEl = document.getElementById('wind-direction');
+        const humidityEl = document.getElementById('humidity');
+        const pressureEl = document.getElementById('pressure');
+        const sunriseEl = document.getElementById('sunrise');
+        const sunsetEl = document.getElementById('sunset');
+        const visibilityEl = document.getElementById('visibility');
+
+        // New Forecast Element
+        const forecastContainer = document.getElementById('forecast-container');
+
+
+        // --- State ---
+        let isMetric = true;
+        let lastWeatherData = null;
+        let lastForecastData = null; // Store forecast data for unit toggling
+
+        // --- Utility Functions ---
+
+        /**
+         * Converts wind degree to cardinal direction.
+         * @param {number} deg - Wind degree (0-360).
+         */
+        function degToDirection(deg) {
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const index = Math.round(deg / 45) % 8;
+            return directions[index];
+        }
+
+        /**
+         * Converts UTC timestamp to local time string using the city's timezone offset.
+         * @param {number} timestamp - Unix timestamp.
+         * @param {number} timezoneOffset - Timezone offset in seconds (from API).
+         */
+        function formatTime(timestamp, timezoneOffset) {
+            // Calculate time in UTC and then apply the city's offset.
+            const date = new Date((timestamp + timezoneOffset) * 1000);
+            
+            // Format time as HH:MM string (using UTC methods to avoid local browser timezone issues)
+            const hours = date.getUTCHours().toString().padStart(2, '0');
+            const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+            
+            return `${hours}:${minutes}`;
+        }
+
+        /**
+         * Converts a temperature value based on the current unit state.
+         * @param {number} kelvin - Temperature in Kelvin (OpenWeatherMap's default).
+         * @returns {number} - Converted temperature (C or F).
+         */
+        function convertTemp(kelvin) {
+            if (isMetric) {
+                // Kelvin to Celsius
+                return Math.round(kelvin - 273.15);
+            } else {
+                // Kelvin to Fahrenheit
+                return Math.round((kelvin - 273.15) * 9/5 + 32);
+            }
+        }
+
+        /**
+         * Converts wind speed based on the current unit state.
+         * @param {number} mps - Speed in meters per second (OpenWeatherMap's default).
+         * @returns {string} - Converted speed with unit label.
+         */
+        function convertWindSpeed(mps) {
+            if (isMetric) {
+                // m/s to km/h (metric)
+                return `${(mps * 3.6).toFixed(1)} km/h`;
+            } else {
+                // m/s to mph (imperial)
+                return `${(mps * 2.237).toFixed(1)} mph`;
+            }
+        }
+        
+        // List of all possible background classes to clear before setting a new one
+        const BACKGROUND_CLASSES = [
+            'bg-gray-900', 'bg-gradient-to-br', 
+            'from-blue-400', 'to-yellow-300', 'from-gray-700', 'to-gray-900',
+            'from-blue-700', 'to-gray-800', 'from-purple-900', 'to-black',
+            'from-gray-600', 'to-gray-800', 'from-gray-500', 'to-gray-700',
+            'from-indigo-900', 'to-gray-900' 
+        ];
+
+        /**
+         * Sets the background based on the weather condition using Tailwind gradients.
+         * @param {string} condition - Main weather condition (e.g., 'Clear', 'Rain').
+         */
+        function setDynamicBackground(condition) {
+            const body = document.body;
+            body.classList.remove(...BACKGROUND_CLASSES);
+
+            let newClasses = ['bg-gradient-to-br']; 
+
+            // Map weather conditions to distinct visual themes
+            switch (condition) {
+                case 'Clear':
+                    newClasses.push('from-blue-400', 'to-yellow-300');
+                    break;
+                case 'Clouds':
+                    newClasses.push('from-gray-700', 'to-gray-900');
+                    break;
+                case 'Rain':
+                case 'Drizzle':
+                    newClasses.push('from-blue-700', 'to-gray-800');
+                    break;
+                case 'Thunderstorm':
+                    newClasses.push('from-purple-900', 'to-black');
+                    break;
+                case 'Snow':
+                    newClasses.push('from-gray-600', 'to-gray-800');
+                    break;
+                case 'Mist':
+                case 'Fog':
+                case 'Smoke':
+                case 'Haze':
+                case 'Dust':
+                case 'Sand':
+                case 'Ash':
+                case 'Squall':
+                    newClasses.push('from-gray-500', 'to-gray-700');
+                    break;
+                default:
+                    newClasses.push('from-indigo-900', 'to-gray-900');
+                    break;
+            }
+
+            // Apply all new classes
+            body.classList.add(...newClasses);
+        }
+
+        /**
+         * Sets message in the message area.
+         * @param {string} msg - The message to display.
+         * @param {string} type - 'error', 'info, or 'success'.
+         */
+        function showMessage(msg, type = 'info') {
+            messageArea.textContent = msg;
+            messageArea.className = 'text-center p-4 mb-8 rounded-xl shadow-lg';
+            
+            // Set colors based on type
+            if (type === 'error') {
+                messageArea.classList.add('bg-red-900', 'bg-opacity-30', 'border', 'border-red-800', 'text-red-300');
+            } else if (type === 'success') {
+                messageArea.classList.add('bg-green-900', 'bg-opacity-30', 'border', 'border-green-800', 'text-green-300');
+            } else {
+                messageArea.classList.add('bg-blue-900', 'bg-opacity-30', 'border', 'border-blue-800', 'text-blue-300');
+            }
+
+            messageArea.classList.remove('hidden');
+            weatherDisplay.classList.add('hidden');
+
+            // Set a neutral default background when an error or message is shown
+            setDynamicBackground('default');
+        }
+
+        function clearMessage() {
+            messageArea.classList.add('hidden');
+        }
+
+        /**
+         * Maps OpenWeatherMap icon code to a visual emoji icon.
+         * @param {string} iconCode - The OWM icon code (e.g., '01d').
+         */
+        function getIconEmoji(iconCode) {
+            const map = {
+                '01d': '☀️', // clear sky (day)
+                '01n': '🌙', // clear sky (night)
+                '02d': '🌤️', // few clouds (day)
+                '02n': '☁️', // few clouds (night)
+                '03d': '☁️', // scattered clouds
+                '03n': '☁️',
+                '04d': '☁️', // broken clouds
+                '04n': '☁️',
+                '09d': '🌧️', // shower rain
+                '09n': '🌧️',
+                '10d': '🌦️', // rain (day)
+                '10n': '🌧️', // rain (night)
+                '11d': '⛈️', // thunderstorm
+                '11n': '⛈️',
+                '13d': '❄️', // snow
+                '13n': '❄️',
+                '50d': '🌫️', // mist
+                '50n': '🌫️',
+            };
+            return map[iconCode] || '❓';
+        }
+
+        // --- Core Application Logic ---
+
+        /**
+         * Renders the current weather data to the DOM.
+         * @param {object} data - Current weather data object.
+         */
+        function renderWeather(data) {
+            if (!data || !data.main || !data.weather || !data.sys || !data.wind) {
+                showMessage("Invalid current weather data received.", 'error');
+                return;
+            }
+            
+            lastWeatherData = data; 
+
+            // Set the dynamic background based on weather condition
+            setDynamicBackground(data.weather[0].main);
+
+            // Update Unit Symbols
+            const unit = isMetric ? 'C' : 'F';
+            unitSymbolEls.forEach(el => el.innerHTML = `&deg;${unit}`);
+
+            // Main Card
+            cityNameEl.textContent = `${data.name}, ${data.sys.country}`;
+            currentDateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            weatherIconPlaceholder.textContent = getIconEmoji(data.weather[0].icon);
+
+            // Temperatures
+            currentTempEl.textContent = convertTemp(data.main.temp);
+            tempMaxEl.textContent = convertTemp(data.main.temp_max);
+            tempMinEl.textContent = convertTemp(data.main.temp_min);
+            descriptionEl.textContent = data.weather[0].description;
+
+
+            // Detail Cards
+            windSpeedEl.textContent = convertWindSpeed(data.wind.speed);
+            windDirectionEl.textContent = degToDirection(data.wind.deg);
+
+            humidityEl.textContent = `${data.main.humidity}%`;
+            pressureEl.textContent = `${data.main.pressure} hPa`;
+
+            // Times (using the city's timezone offset)
+            sunriseEl.textContent = formatTime(data.sys.sunrise, data.timezone);
+            sunsetEl.textContent = formatTime(data.sys.sunset, data.timezone);
+
+            // Visibility (OpenWeatherMap provides in meters)
+            visibilityEl.textContent = `${(data.visibility / 1000).toFixed(1)} km`;
+
+            clearMessage();
+            weatherDisplay.classList.remove('hidden');
+        }
+
+        /**
+         * Filters the 3-hour forecast data to get one representative entry per day (near noon).
+         * @param {Array} list - The forecast list from the API response.
+         * @returns {Array} - Filtered list of daily forecasts.
+         */
+        function processForecastData(list) {
+            const dailyData = {};
+            const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+            list.forEach(item => {
+                const date = new Date(item.dt * 1000);
+                const dayKey = date.toDateString(); // e.g., "Wed May 15 2024"
+
+                if (!dailyData[dayKey]) {
+                    // Initialize with the first item of the day
+                    dailyData[dayKey] = {
+                        date: date,
+                        temp_min: item.main.temp_min,
+                        temp_max: item.main.temp_max,
+                        icon: item.weather[0].icon,
+                        main: item.weather[0].main,
+                        count: 1,
+                        // Initialize array to track all temps for min/max calculation across the day
+                        all_temps: [item.main.temp_min, item.main.temp_max] 
+                    };
+                } else {
+                    // Update min/max temps for the day
+                    dailyData[dayKey].temp_min = Math.min(dailyData[dayKey].temp_min, item.main.temp_min);
+                    dailyData[dayKey].temp_max = Math.max(dailyData[dayKey].temp_max, item.main.temp_max);
+                }
+                
+                // Prioritize the entry closest to noon (12:00 UTC) as the "main" icon/condition
+                if (date.getUTCHours() >= 11 && date.getUTCHours() <= 14) {
+                    dailyData[dayKey].icon = item.weather[0].icon;
+                    dailyData[dayKey].main = item.weather[0].main;
+                }
+            });
+
+            // Convert object to array and only keep the next 5 days (excluding today)
+            const today = new Date().toDateString();
+            const forecastArray = Object.values(dailyData)
+                .filter(day => day.date.toDateString() !== today)
+                .slice(0, 5);
+
+            return forecastArray;
+        }
+
+        /**
+         * Renders the 5-day forecast data to the DOM.
+         * @param {Array} dailyForecasts - Array of filtered daily forecast objects.
+         */
+        function renderForecast(dailyForecasts) {
+            forecastContainer.innerHTML = ''; // Clear previous forecast
+
+            if (dailyForecasts.length === 0) {
+                forecastContainer.innerHTML = '<p class="col-span-full text-center text-gray-400 p-4 bg-gray-800 rounded-xl">No forecast data available.</p>';
+                return;
+            }
+
+            const unit = isMetric ? 'C' : 'F';
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            dailyForecasts.forEach(day => {
+                const dayIndex = day.date.getDay();
+                const dayName = dayNames[dayIndex];
+                const highTemp = convertTemp(day.temp_max);
+                const lowTemp = convertTemp(day.temp_min);
+                const icon = getIconEmoji(day.icon);
+
+                const cardHtml = `
+                    <div class="bg-gray-800 p-4 rounded-xl shadow-xl border border-gray-700 text-center space-y-2 transition duration-300 hover:bg-gray-700">
+                        <p class="text-sm font-semibold text-gray-400">${dayName}</p>
+                        <div class="text-4xl">${icon}</div>
+                        <p class="text-lg font-bold text-gray-200">${highTemp}&deg;${unit}</p>
+                        <p class="text-xs text-gray-500">Min: ${lowTemp}&deg;${unit}</p>
+                    </div>
+                `;
+                forecastContainer.innerHTML += cardHtml;
+            });
+        }
+
+        /**
+         * Fetches current weather data from the OpenWeatherMap API with exponential backoff.
+         * @param {string} location - City name or location query.
+         * @param {number} retryCount - Current retry attempt.
+         */
+        async function fetchWeather(location, retryCount = 0) {
+            if (!API_KEY) {
+                 showMessage("API key is missing. Please add a key to the script.", 'error');
+                 return;
+            }
+
+            const url = `${CURRENT_WEATHER_URL}?q=${encodeURIComponent(location)}&appid=${API_KEY}`;
+            const MAX_RETRIES = 5;
+
+            showMessage(`Fetching weather for ${location}...`, 'info');
+
+            try {
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                         showMessage(`City "${location}" not found. Please check the spelling.`, 'error');
+                         return;
+                    }
+
+                    if (retryCount < MAX_RETRIES) {
+                        const delay = Math.pow(2, retryCount) * 1000; 
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        return fetchWeather(location, retryCount + 1); // Retry recursively
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                renderWeather(data);
+
+                // --- NEW: Fetch Forecast Data after successful current weather fetch ---
+                fetchForecast(location); 
+
+            } catch (error) {
+                showMessage(`Could not fetch current weather data. Error: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Fetches the 5-day forecast data.
+         * @param {string} location - City name or location query.
+         */
+        async function fetchForecast(location) {
+            const url = `${FORECAST_URL}?q=${encodeURIComponent(location)}&appid=${API_KEY}`;
+            
+            try {
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const dailyForecasts = processForecastData(data.list);
+                lastForecastData = dailyForecasts; // Save for unit conversion
+                renderForecast(dailyForecasts);
+
+            } catch (error) {
+                // Console error for forecast is acceptable since the main data is still displayed
+                // console.error("Forecast fetch error:", error);
+                // Optionally show a message, but we'll stick to displaying the main data.
+            }
+        }
+
+
+        /**
+         * Initializes the app by fetching weather for a default city.
+         */
+        function getCurrentLocationWeather() {
+            // Set a neutral background on load
+            setDynamicBackground('default');
+            // Start by fetching weather for a default city, which also triggers the forecast fetch
+            fetchWeather(DEFAULT_CITY);
+        }
+
+        // --- Event Handlers ---
+
+        function handleSearch() {
+            const city = cityInput.value.trim();
+            if (city) {
+                // Only call fetchWeather, it handles calling fetchForecast
+                fetchWeather(city);
+                cityInput.value = ''; // Clear input after search
+            } else {
+                showMessage("Please enter a city name or zip code.", 'error');
+            }
+        }
+
+        function toggleUnits() {
+            isMetric = !isMetric;
+            unitToggle.textContent = isMetric ? '°C / °F' : '°F / °C'; // Update button text
+            
+            // Re-render current weather if data exists
+            if (lastWeatherData) {
+                renderWeather(lastWeatherData);
+            } 
+            
+            // Re-render forecast if data exists
+            if (lastForecastData) {
+                renderForecast(lastForecastData);
+            } else if (!lastWeatherData) {
+                showMessage("No weather data available to convert.", 'info');
+            }
+        }
+
+        function setupEventListeners() {
+            searchButton.addEventListener('click', handleSearch);
+            cityInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    handleSearch();
+                }
+            });
+            unitToggle.addEventListener('click', toggleUnits);
+        }
+
+
+        // --- Initialization ---
+        window.onload = () => {
+            setupEventListeners();
+            getCurrentLocationWeather();
+        };
+
+    </script>
+</body>
+</html>
